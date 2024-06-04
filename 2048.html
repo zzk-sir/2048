@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048</title>
+    <style>
+        .app{
+            width:100vw;
+            height:100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: antiquewhite;
+            flex-direction: column;
+            justify-content: space-evenly;
+        }
+        .show div{
+            font-size: 1.5rem;
+            transition: all 1s;
+        }
+        .mark{
+            color: rgb(127, 180, 49);
+        }
+        .maxValue{
+            color:rgb(213, 213, 6)
+        }
+        .container{
+            display: grid;
+            width:fit-content;
+            box-sizing: border-box;
+            grid-template-rows: repeat(4,1fr);
+            grid-template-columns: repeat(4,1fr);
+            background-color: rgb(87, 255, 199);
+            border-radius: 0.3rem;
+            border-spacing:0px;
+            border:0.05rem solid rgb(1, 154, 1);
+        }
+        .item{
+            width:5rem;
+            height:5rem;
+            background-color: #baf2f2;
+            border-radius: 0.3rem;
+            border:0.05rem solid rgb(1, 154, 1);
+            font-size: 3rem;
+            text-align: center;
+            line-height: 5rem;
+            font-weight: 800;
+            color:aliceblue;
+            transition: all 1s;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="show">
+            <div class="mark">
+                得分：0
+            </div>
+            <div class="maxValue">
+                最大记录：0
+            </div>
+        </div>
+        <div class="container">
+            <div class="item pos11"></div>
+           <div class="item pos12"></div>
+           <div class="item pos13"></div>
+           <div class="item pos14"></div>
+           
+           <div class="item pos21"></div>
+           <div class="item pos22"></div>
+           <div class="item pos23"></div>
+           <div class="item pos24"></div>
+    
+           <div class="item pos31"></div>
+           <div class="item pos32"></div>
+           <div class="item pos33"></div>
+           <div class="item pos34"></div>
+    
+           <div class="item pos41"></div>
+           <div class="item pos42"></div>
+           <div class="item pos43"></div>
+           <div class="item pos44"></div>
+        </div>
+    </div>
+</body>
+<script>
+    let fontBackColor = {
+        2:"#fad7ef",
+        4:"#f0dab0",
+        8:"#f99150",
+        16:"#f96a2c",
+        32:"#f33918",
+        64:"#f20b16",
+        128:"#f20bc0",
+        256:"#c40bf2",
+        512:"#630bf2",
+        1024:"#0bf282",
+        2048:"#eafa06",
+    }
+    // 数据
+    function Item(value,posx,posy){
+        return {
+            value,
+            color:value&&fontBackColor[value],
+            posx,
+            posy
+        }
+    }
+    let newValue = 2
+    let itemsData = []
+    let itemNodes = []
+    let gameBoard
+    let vw = 4
+    let vh = 4
+    let ismove = false
+    let mark = 0
+    let maxValue = 0
+    let markNode
+    let maxValueNode
+    let isDragging = false;
+    let startX, startY;
+    // 初始化 
+    const initGame = ()=>{
+        itemNodes = document.querySelectorAll('.container .item')
+        gameBoard = document.querySelector('.container')
+        markNode = document.querySelector('.show .mark')
+        maxValueNode = document.querySelector('.show .maxValue')
+        maxValue = 16||0
+        for(let i=1;i<=vw;i++){
+            for(let j=1;j<=vh;j++){
+                itemsData.push(Item(0,i,j))
+            }
+        }
+        renderMark()
+        // console.log(itemsData)
+        // console.log(itemNodes)
+        // console.log(gameBoard)
+        // console.log(markNode)
+        // console.log(maxValueNode)
+    }
+    
+    const generateNextRandomPos = ()=>{
+        let remainItems = itemsData.filter(item=>item.value==0)
+        if(remainItems.length==0) return ;
+        let randomItem = remainItems[Math.floor(Math.random()*remainItems.length)]
+        for(let i=0;i<itemsData.length;i++){
+            if(itemsData[i].posx==randomItem.posx&&
+                itemsData[i].posy==randomItem.posy){
+                    let newItem = Item(newValue,randomItem.posx,randomItem.posy) 
+                    itemsData[i] = newItem
+                    itemNodes[i].innerHTML = newItem.value
+                    itemNodes[i].style.backgroundColor = '#faecf8'
+                    setTimeout(()=>{
+                        itemNodes[i].style.backgroundColor = newItem.color
+                    },200)
+                    // console.log(itemNodes[i],'find')
+                }
+        } 
+        ismove = false       
+    }
+
+    const renderMark = ()=>{
+        markNode.innerHTML = `得分：${mark}`
+        maxValueNode.innerHTML = `最大记录：${maxValue}`
+        window.localStorage.setItem('maxValue',maxValue)
+    }
+    function debounce(fn, wait) {
+    let timeout = null;
+    return function () {
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            fn.apply(this, arguments);
+        }, wait);
+    };
+    }
+
+    const initMoniter = ()=>{
+        const handle = (event)=>{
+            event.preventDefault();
+            if(event.keyCode>=37&&event.keyCode<=40){
+                // console.log('itemsData===',itemsData)
+                switch(event.keyCode){
+                    case 37:
+                        // leftl
+                        console.log('left')
+                        for(let i=0;i<itemsData.length;i++){
+                            renderLeft(itemsData,i)
+                        }
+                        break
+                    case 38:
+                        // top
+                        console.log('top')
+                        for(let i=0;i<itemsData.length;i++){
+                            renderTop(itemsData,i)
+                        }
+                        break
+                    case 39:
+                        // right
+                        console.log('right')
+                        for(let i=itemsData.length-1;i>=0;i--){
+                            renderRight(itemsData,i)
+                        }
+                        break
+                    case 40:
+                        // bottom
+                        console.log('bottom')
+                        for(let i=itemsData.length-1;i>=0;i--){
+                            renderBottom(itemsData,i)
+                        }
+                        break
+                    default:
+                        throw new Error('出错')
+                }
+                renderMark()
+                if(ismove) generateNextRandomPos()
+            }
+        }
+        document.addEventListener('keyup',debounce(handle,250))
+    }
+    
+    const renderLeft = (itemsData,i)=>{
+        if(itemsData[i].value&&i-1>=0&&
+            itemsData[i].posx==itemsData[i-1].posx){
+                if(itemsData[i-1].value==0){
+                    swapArr(itemsData,i,i-1)
+                    turnPos(itemNodes[i],itemNodes[i-1])
+                    renderLeft(itemsData,i-1)
+                    ismove = true
+                }else if(itemsData[i-1].value==itemsData[i].value){
+                    addPos(itemsData,i,i-1)
+                    ismove = true
+                }
+            }
+    }
+    const renderRight = (itemsData,i)=>{
+        if(itemsData[i].value&&i+1<itemsData.length&&
+            itemsData[i].posx==itemsData[i+1].posx){
+                if(itemsData[i+1].value==0){
+                    swapArr(itemsData,i,i+1)
+                    turnPos(itemNodes[i],itemNodes[i+1])
+                    renderRight(itemsData,i+1)
+                    ismove = true
+                }else if(itemsData[i+1].value==itemsData[i].value){
+                    addPos(itemsData,i,i+1)
+                    ismove = true
+                }
+            }
+    }
+    const renderTop = (itemsData,i)=>{
+        if(itemsData[i].value&&i-vw>=0){
+                if(itemsData[i-vw].value==0){
+                    swapArr(itemsData,i,i-vw)
+                    turnPos(itemNodes[i],itemNodes[i-vw])
+                    renderTop(itemsData,i-vw)
+                    ismove = true
+                }else if(itemsData[i-vw].value==itemsData[i].value){
+                    addPos(itemsData,i,i-vw)
+                    ismove = true
+                }
+            }
+    }
+    const renderBottom = (itemsData,i)=>{
+        if(itemsData[i].value&&i+vw<itemsData.length){
+                if(itemsData[i+vw].value==0){
+                    swapArr(itemsData,i,i+vw)
+                    turnPos(itemNodes[i],itemNodes[i+vw])
+                    renderBottom(itemsData,i+vw)
+                    ismove = true
+                }else if(itemsData[i+vw].value==itemsData[i].value){
+                    addPos(itemsData,i,i+vw)
+                    ismove = true
+                }
+            }
+    }
+    const turnPos = (itemNode1,itemNode2)=>{
+        swapAttr(itemNode1,itemNode2,'innerHTML')
+        swapAttr(itemNode1.style,itemNode2.style,'backgroundColor')
+    }
+
+    const swapAttr = (obj1,obj2,attr)=>{
+        let tmp = obj1[attr]
+        obj1[attr] = obj2[attr]
+        obj2[attr]  =tmp
+    }
+
+    const swapArr = (arr,i,j)=>{
+        let tmp = arr[i].value
+        arr[i].value = arr[j].value
+        arr[j].value = tmp
+        let tmp1 = arr[i].color
+        arr[i].color = arr[j].color
+        arr[j].color = tmp1
+    }
+
+    const addPos = (arr,i,j)=>{
+        maxValue = Math.max(maxValue,arr[i].value*2)
+        mark+=arr[i].value
+        arr[j] = Item(arr[i].value*2,arr[j].posx,arr[j].posy)
+        arr[i].value = 0
+        flashNodes(arr,j)
+        flashNodes(arr,i)
+    }
+
+    const flashNodes = (itemsArr,i)=>{
+        if(itemsArr[i].value==0){
+            itemNodes[i].innerHTML = ''
+            itemNodes[i].style.backgroundColor = '#baf2f2'
+        }else{
+            itemNodes[i].innerHTML = itemsArr[i].value
+            itemNodes[i].style.backgroundColor = itemsArr[i].color
+        }
+    }
+
+    const playGame = ()=>{
+        initGame()
+        initMoniter()
+        generateNextRandomPos()
+    }
+
+    playGame()
+
+</script>
+</html>
